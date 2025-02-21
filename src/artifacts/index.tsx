@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -25,7 +28,7 @@ const HouseHeatingSimulation = () => {
   const STEPS_PER_HOUR = 3600 / SECONDS_PER_STEP; // steps per hour
   const HOURS_SIMULATED = 24;
   const TOTAL_STEPS = HOURS_SIMULATED * STEPS_PER_HOUR;
-  const HEATER_OUTPUT = 20000; // BTU per hour
+  const HEATER_OUTPUT = 60000; // BTU per hour
   const HOUSE_HEAT_CAPACITY = 4000; // BTU per °F
   const THERMOSTAT_HYSTERESIS = 1; // °F (±0.5°F around setpoint)
 
@@ -291,15 +294,34 @@ const HouseHeatingSimulation = () => {
           </div>
 
           {simulationData.length > 0 && (
-            <div className="bg-gray-100 p-3 rounded mt-2 text-sm">
-              <h3 className="font-medium mb-1">Simulation Results:</h3>
-              <p>Mode 1 Energy: {summary.mode1Energy} BTU</p>
-              <p>Mode 2 Energy: {summary.mode2Energy} BTU</p>
-              <p className="font-bold">
-                {parseFloat(summary.savings) > 0
-                  ? `Mode 2 saves ${summary.savings}% energy`
-                  : `Mode 1 is more efficient by ${Math.abs(summary.savings)}%`}
-              </p>
+            <div className="bg-gray-100 p-3 rounded mt-2 text-sm flex items-center">
+              <div className="flex-1">
+                <h3 className="font-medium mb-1">Simulation Results:</h3>
+                <p>Mode 1 Energy: {summary.mode1Energy} BTU</p>
+                <p>Mode 2 Energy: {summary.mode2Energy} BTU</p>
+                <p className="font-bold">
+                  {parseFloat(summary.savings) > 0
+                    ? `Mode 2 saves ${summary.savings}% energy`
+                    : `Mode 1 is more efficient by ${Math.abs(summary.savings)}%`}
+                </p>
+              </div>
+              <div className="w-40 h-20">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      { name: 'Mode 1', BTU: parseInt(summary.mode1Energy) },
+                      { name: 'Mode 2', BTU: parseInt(summary.mode2Energy) },
+                    ]}
+                    margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
+                  >
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <Bar dataKey="BTU">
+                      <Cell key="cell-0" fill="#8884d8" />
+                      <Cell key="cell-1" fill="#82ca9d" />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           )}
         </div>
@@ -325,7 +347,6 @@ const HouseHeatingSimulation = () => {
                 />
                 <YAxis
                   label={{
-                    // value: 'Temperature (°F)',
                     angle: -90,
                     position: 'insideLeft',
                   }}
@@ -390,7 +411,6 @@ const HouseHeatingSimulation = () => {
                 />
                 <YAxis
                   label={{
-                    // value: 'Energy (BTU)',
                     angle: -90,
                     position: 'insideLeft',
                   }}
