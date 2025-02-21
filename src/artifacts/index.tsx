@@ -191,14 +191,14 @@ const HouseHeatingSimulation = () => {
         />
         <meta
           property="og:image"
-          content="https://example.com/path/to/placeholder-image.jpg"
+          content="https://turn-your-heater-off.obliscence.com/turn-your-heater-off.jpg"
         />
-        <meta property="og:url" content="https://example.com/path/to/page" />
+        <meta property="og:url" content="https://turn-your-heater-off.obliscence.com/" />
         <meta property="og:type" content="website" />
-        <link
+        {/* <link
           rel="icon"
           href="https://example.com/path/to/placeholder-icon.png"
-        />
+        /> */}
         {/*
           Ideal image resolution for OG image: 1200 x 630 pixels.
           Ideal icon resolution for favicon: 32 x 32 pixels.
