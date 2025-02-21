@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import {
   LineChart,
@@ -14,6 +14,21 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
+interface SimulationData {
+  time: string;
+  hour: number;
+  temperature: number;
+  outsideTemp: number;
+  heaterOn: boolean;
+  energyUsed: number;
+}
+
+interface Summary {
+  mode1Energy: string;
+  mode2Energy: string;
+  savings: string;
+}
+
 const HouseHeatingSimulation = () => {
   // Simulation parameters
   const [outsideTemp, setOutsideTemp] = useState(30); // Base outside temperature (°F)
@@ -21,8 +36,8 @@ const HouseHeatingSimulation = () => {
   const [insulation, setInsulation] = useState(5); // Insulation efficiency (1-10)
   const [mode, setMode] = useState(1); // 1 = 24hr heating, 2 = night setback
   const [diurnalVariation, setDiurnalVariation] = useState(15); // Diurnal variation slider (0-30°F)
-  const [simulationData, setSimulationData] = useState([]);
-  const [summary, setSummary] = useState({ mode1Energy: 0, mode2Energy: 0, savings: 0 });
+  const [simulationData, setSimulationData] = useState<SimulationData[]>([]);
+  const [summary, setSummary] = useState<Summary>({ mode1Energy: '0', mode2Energy: '0', savings: '0' });
 
   // Constants
   const SECONDS_PER_STEP = 10; // 10 seconds per simulation step
@@ -83,7 +98,7 @@ const HouseHeatingSimulation = () => {
       const dt = SECONDS_PER_STEP / 3600; // time step in hours
       const heaterOutputValue = heaterOn ? HEATER_OUTPUT : 0;
       // Differential equation: dT/dt = (heaterOutputValue - (T - effectiveOutsideTemp)*heatLossCoefficient) / HOUSE_HEAT_CAPACITY
-      const f = (T) =>
+      const f = (T: number) =>
         (heaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / HOUSE_HEAT_CAPACITY;
 
       const k1 = f(currentTemp);
@@ -145,7 +160,7 @@ const HouseHeatingSimulation = () => {
 
       const dt = SECONDS_PER_STEP / 3600;
       const heaterOutputValue = otherHeaterOn ? HEATER_OUTPUT : 0;
-      const fOther = (T) =>
+      const fOther = (T: number) =>
         (heaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / HOUSE_HEAT_CAPACITY;
 
       const k1 = fOther(otherTemp);
@@ -328,7 +343,7 @@ const HouseHeatingSimulation = () => {
                   <p className="font-bold">
                     {parseFloat(summary.savings) > 0
                       ? `Mode 2 saves ${summary.savings}%`
-                      : `Mode 1 is more efficient by ${Math.abs(summary.savings)}%`}
+                      : `Mode 1 is more efficient by ${Math.abs(parseFloat(summary.savings))}%`}
                   </p>
                 </div>
                 <div className="w-40 h-20">
@@ -443,7 +458,7 @@ const HouseHeatingSimulation = () => {
                   />
                   <Tooltip
                     formatter={(value) => [
-                      `${parseInt(value).toLocaleString()} BTU`,
+                      `${parseInt(value.toString()).toLocaleString()} BTU`,
                       'Energy Used',
                     ]}
                     labelFormatter={(time) => `Time: ${time}`}
