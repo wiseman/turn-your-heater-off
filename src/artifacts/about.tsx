@@ -1,4 +1,3 @@
-import React from 'react';
 import { Helmet } from 'react-helmet';
 
 const About = () => {
@@ -15,7 +14,7 @@ const About = () => {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">Model Overview</h2>
           <p className="mb-3">
-            This simulation implements a first-principles thermodynamic model of residential heating, focusing on the energy balance 
+            This simulation implements a thermodynamic model of residential heating, focusing on the energy balance 
             between a home's heating system, thermal mass, and heat loss to the environment. The model evaluates the efficiency 
             tradeoffs between constant temperature maintenance versus nighttime temperature setbacks.
           </p>
@@ -46,8 +45,7 @@ const About = () => {
             k<sub>loss</sub> = 1000 / insulation
           </div>
           <p className="mb-3">
-            Where the insulation parameter ranges from 1 (minimal insulation) to 10 (highly insulated), 
-            resulting in k<sub>loss</sub> values from 1000 to 100 BTU/hr·°F.
+            Where the insulation parameter ranges from 1 (minimal insulation) to 10 (highly insulated).
           </p>
         </section>
 
@@ -58,7 +56,7 @@ const About = () => {
             This provides significantly higher accuracy than simpler methods such as Euler integration, particularly
             important for capturing thermal behavior during rapid temperature changes.
           </p>
-          <p className="mb-3">The RK4 implementation calculates temperature changes as follows:</p>
+          {/* <p className="mb-3">The RK4 implementation calculates temperature changes as follows:</p>
           <div className="bg-gray-100 p-4 rounded-md mb-4 font-mono overflow-x-auto">
             <p>k1 = f(T)</p>
             <p>k2 = f(T + k1 × dt/2)</p>
@@ -67,9 +65,8 @@ const About = () => {
             <p>ΔT = (dt/6) × (k1 + 2×k2 + 2×k3 + k4)</p>
           </div>
           <p className="mb-3">
-            Where f(T) represents the differential equation described above, and dt is the time step (10 seconds 
-            converted to hours for calculation purposes).
-          </p>
+            Where f(T) represents the differential equation described above, and dt is the time step (10 seconds).
+          </p> */}
         </section>
 
         <section className="mb-8">

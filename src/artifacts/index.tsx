@@ -28,6 +28,8 @@ interface Summary {
   mode1Energy: string;
   mode2Energy: string;
   savings: string;
+  mode1DutyCycle: string;
+  mode2DutyCycle: string;
 }
 
 const HouseHeatingSimulation = () => {
@@ -40,7 +42,13 @@ const HouseHeatingSimulation = () => {
   const [mode, setMode] = useState(1); // 1 = 24hr heating, 2 = night setback
   const [diurnalVariation, setDiurnalVariation] = useState(15); // Diurnal variation slider (0-30°F)
   const [simulationData, setSimulationData] = useState<SimulationData[]>([]);
-  const [summary, setSummary] = useState<Summary>({ mode1Energy: '0', mode2Energy: '0', savings: '0' });
+  const [summary, setSummary] = useState<Summary>({
+    mode1Energy: '0',
+    mode2Energy: '0',
+    savings: '0',
+    mode1DutyCycle: '0',
+    mode2DutyCycle: '0',
+  });
   const [showAdvanced, setShowAdvanced] = useState(false); // State for advanced section toggle
 
   // Constants
@@ -55,6 +63,7 @@ const HouseHeatingSimulation = () => {
     let currentTemp = desiredTemp;
     let heaterOn = false;
     let totalEnergyUsed = 0;
+    let heaterOnCount = 0; // Count of steps with heater on
     const data = [];
 
     // Determine heat loss coefficient (BTU/hr per °F difference)
@@ -111,9 +120,10 @@ const HouseHeatingSimulation = () => {
       const deltaT = (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
       currentTemp += deltaT;
 
-      // Track energy usage (BTU used per step)
+      // Track energy usage and duty cycle (BTU used per step)
       if (heaterOn) {
         totalEnergyUsed += heaterOutput / STEPS_PER_HOUR;
+        heaterOnCount++;
       }
 
       data.push({
@@ -133,6 +143,7 @@ const HouseHeatingSimulation = () => {
     let otherTemp = desiredTemp;
     let otherHeaterOn = false;
     let otherEnergyUsed = 0;
+    let otherHeaterOnCount = 0;
 
     for (let step = 0; step < TOTAL_STEPS; step++) {
       const timeInHours = step / STEPS_PER_HOUR;
@@ -175,6 +186,7 @@ const HouseHeatingSimulation = () => {
 
       if (otherHeaterOn) {
         otherEnergyUsed += heaterOutput / STEPS_PER_HOUR;
+        otherHeaterOnCount++;
       }
     }
 
@@ -183,10 +195,18 @@ const HouseHeatingSimulation = () => {
     const mode2Energy = mode === 2 ? totalEnergyUsed : otherEnergyUsed;
     const savings = ((mode1Energy - mode2Energy) / mode1Energy * 100).toFixed(2);
 
+    // Compute the heater duty cycle (as a percentage of steps with the heater on)
+    const dutyCycleCurrent = (heaterOnCount / TOTAL_STEPS) * 100;
+    const dutyCycleOther = (otherHeaterOnCount / TOTAL_STEPS) * 100;
+    const mode1DutyCycle = mode === 1 ? dutyCycleCurrent : dutyCycleOther;
+    const mode2DutyCycle = mode === 2 ? dutyCycleCurrent : dutyCycleOther;
+
     setSummary({
       mode1Energy: mode1Energy.toFixed(0),
       mode2Energy: mode2Energy.toFixed(0),
       savings,
+      mode1DutyCycle: mode1DutyCycle.toFixed(2),
+      mode2DutyCycle: mode2DutyCycle.toFixed(2),
     });
   };
 
@@ -283,6 +303,7 @@ const HouseHeatingSimulation = () => {
                     type="range"
                     min="20000"
                     max="150000"
+                    step="5000"
                     value={heaterOutput}
                     onChange={(e) => setHeaterOutput(parseInt(e.target.value))}
                     className="w-full"
@@ -297,6 +318,7 @@ const HouseHeatingSimulation = () => {
                     type="range"
                     min="2000"
                     max="20000"
+                    step="1000"
                     value={houseHeatCapacity}
                     onChange={(e) => setHouseHeatCapacity(parseInt(e.target.value))}
                     className="w-full"
@@ -377,6 +399,8 @@ const HouseHeatingSimulation = () => {
                   <h3 className="font-medium mb-1">Simulation Results:</h3>
                   <p>Mode 1 Energy: {summary.mode1Energy} BTU</p>
                   <p>Mode 2 Energy: {summary.mode2Energy} BTU</p>
+                  <p>Mode 1 Heater Duty Cycle: {summary.mode1DutyCycle}%</p>
+                  <p>Mode 2 Heater Duty Cycle: {summary.mode2DutyCycle}%</p>
                   <p className="font-bold">
                     {parseFloat(summary.savings) > 0
                       ? `Mode 2 saves ${summary.savings}%`
@@ -442,7 +466,7 @@ const HouseHeatingSimulation = () => {
                     }}
                     labelFormatter={(time) => `Time: ${time}`}
                   />
-                  <Legend verticalAlign='top' />
+                  <Legend verticalAlign="top" />
                   <Line
                     type="monotone"
                     dataKey="temperature"
@@ -459,14 +483,6 @@ const HouseHeatingSimulation = () => {
                     dot={false}
                     name="Outside Temp"
                   />
-                  {/* <Line
-                    type="step"
-                    dataKey="heaterOn"
-                    stroke="#ff7300"
-                    strokeWidth={1.5}
-                    dot={false}
-                    name="Heater Status"
-                  /> */}
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -500,7 +516,6 @@ const HouseHeatingSimulation = () => {
                     ]}
                     labelFormatter={(time) => `Time: ${time}`}
                   />
-                  {/* <Legend verticalAlign='top' /> */}
                   <Line
                     type="monotone"
                     dataKey="energyUsed"
