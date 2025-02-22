@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import {
   LineChart,
@@ -34,6 +35,8 @@ const HouseHeatingSimulation = () => {
   const [outsideTemp, setOutsideTemp] = useState(30); // Base outside temperature (°F)
   const [desiredTemp, setDesiredTemp] = useState(68); // Desired inside temperature (°F)
   const [insulation, setInsulation] = useState(5); // Insulation efficiency (1-10)
+  const [houseHeatCapacity, setHouseHeatCapacity] = useState(4000); // House heat capacity (BTU/°F)
+  const [heaterOutput, setHeaterOutput] = useState(60000); // Heater output (BTU/hr)
   const [mode, setMode] = useState(1); // 1 = 24hr heating, 2 = night setback
   const [diurnalVariation, setDiurnalVariation] = useState(15); // Diurnal variation slider (0-30°F)
   const [simulationData, setSimulationData] = useState<SimulationData[]>([]);
@@ -44,8 +47,6 @@ const HouseHeatingSimulation = () => {
   const STEPS_PER_HOUR = 3600 / SECONDS_PER_STEP; // steps per hour
   const HOURS_SIMULATED = 24;
   const TOTAL_STEPS = HOURS_SIMULATED * STEPS_PER_HOUR;
-  const HEATER_OUTPUT = 60000; // BTU per hour
-  const HOUSE_HEAT_CAPACITY = 4000; // BTU per °F
   const THERMOSTAT_HYSTERESIS = 1; // °F (±0.5°F around setpoint)
 
   const runSimulation = () => {
@@ -96,10 +97,10 @@ const HouseHeatingSimulation = () => {
 
       // RK4 integration step
       const dt = SECONDS_PER_STEP / 3600; // time step in hours
-      const heaterOutputValue = heaterOn ? HEATER_OUTPUT : 0;
+      const heaterOutputValue = heaterOn ? heaterOutput : 0;
       // Differential equation: dT/dt = (heaterOutputValue - (T - effectiveOutsideTemp)*heatLossCoefficient) / HOUSE_HEAT_CAPACITY
       const f = (T: number) =>
-        (heaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / HOUSE_HEAT_CAPACITY;
+        (heaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / houseHeatCapacity;
 
       const k1 = f(currentTemp);
       const k2 = f(currentTemp + (k1 * dt) / 2);
@@ -111,7 +112,7 @@ const HouseHeatingSimulation = () => {
 
       // Track energy usage (BTU used per step)
       if (heaterOn) {
-        totalEnergyUsed += HEATER_OUTPUT / STEPS_PER_HOUR;
+        totalEnergyUsed += heaterOutput / STEPS_PER_HOUR;
       }
 
       data.push({
@@ -159,9 +160,9 @@ const HouseHeatingSimulation = () => {
       }
 
       const dt = SECONDS_PER_STEP / 3600;
-      const heaterOutputValue = otherHeaterOn ? HEATER_OUTPUT : 0;
+      const heaterOutputValue = otherHeaterOn ? heaterOutput : 0;
       const fOther = (T: number) =>
-        (heaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / HOUSE_HEAT_CAPACITY;
+        (heaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / houseHeatCapacity;
 
       const k1 = fOther(otherTemp);
       const k2 = fOther(otherTemp + (k1 * dt) / 2);
@@ -172,7 +173,7 @@ const HouseHeatingSimulation = () => {
       otherTemp += deltaT;
 
       if (otherHeaterOn) {
-        otherEnergyUsed += HEATER_OUTPUT / STEPS_PER_HOUR;
+        otherEnergyUsed += heaterOutput / STEPS_PER_HOUR;
       }
     }
 
@@ -204,6 +205,9 @@ const HouseHeatingSimulation = () => {
       <div className="p-4 max-w-4xl mx-auto bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold mb-3">House Heating Simulation</h1>
 
+        {/* <Link to="/about" className="text-blue-600 hover:underline">
+          Learn more about this simulation.
+        </Link> */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Left column: Inputs */}
           <div className="space-y-2">
@@ -223,16 +227,50 @@ const HouseHeatingSimulation = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Desired Inside Temp (°F): {desiredTemp}°F
+                Daily Temp Variation (°F): {diurnalVariation}°F
               </label>
               <input
                 type="range"
-                min="50"
-                max="80"
-                value={desiredTemp}
-                onChange={(e) => setDesiredTemp(parseInt(e.target.value))}
+                min="0"
+                max="30"
+                value={diurnalVariation}
+                onChange={(e) => setDiurnalVariation(parseInt(e.target.value))}
                 className="w-full"
               />
+              <span className="text-xs text-gray-500">
+                (Daily temperature swing amplitude)
+              </span>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Heater output (BTU/hr): {heaterOutput}
+              </label>
+              <input
+                type="range"
+                min="20000"
+                max="150000"
+                value={heaterOutput}
+                onChange={(e) => setHeaterOutput(parseInt(e.target.value))}
+                className="w-full"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                House Heat Capacity (BTU/°F): {houseHeatCapacity}
+              </label>
+              <input
+                type="range"
+                min="2000"
+                max="20000"
+                value={houseHeatCapacity}
+                onChange={(e) => setHouseHeatCapacity(parseInt(e.target.value))}
+                className="w-full"
+              />
+              <span className="text-xs text-gray-500">
+                (Higher values ~= bigger house)
+              </span>
             </div>
 
             <div>
@@ -254,19 +292,16 @@ const HouseHeatingSimulation = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Daily Temp Variation (°F): {diurnalVariation}°F
+                Desired Inside Temp (°F): {desiredTemp}°F
               </label>
               <input
                 type="range"
-                min="0"
-                max="30"
-                value={diurnalVariation}
-                onChange={(e) => setDiurnalVariation(parseInt(e.target.value))}
+                min="50"
+                max="80"
+                value={desiredTemp}
+                onChange={(e) => setDesiredTemp(parseInt(e.target.value))}
                 className="w-full"
               />
-              <span className="text-xs text-gray-500">
-                (Daily temperature swing amplitude)
-              </span>
             </div>
           </div>
 
@@ -386,7 +421,7 @@ const HouseHeatingSimulation = () => {
                     }}
                     labelFormatter={(time) => `Time: ${time}`}
                   />
-                  <Legend verticalAlign='top'/>
+                  <Legend verticalAlign='top' />
                   <Line
                     type="monotone"
                     dataKey="temperature"
