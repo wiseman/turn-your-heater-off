@@ -199,25 +199,6 @@ const HouseHeatingSimulation = () => {
       {/* React Helmet for injecting OG/social sharing metadata */}
       <Helmet>
         <title>House Heating Simulation</title>
-        <meta property="og:title" content="House Heating Simulation" />
-        <meta
-          property="og:description"
-          content="Does it save money to turn down your heat at night? Run a simulation to find out!"
-        />
-        <meta
-          property="og:image"
-          content="https://turn-your-heater-off.obliscence.com/turn-your-heater-off.jpg"
-        />
-        <meta property="og:url" content="https://turn-your-heater-off.obliscence.com/" />
-        <meta property="og:type" content="website" />
-        {/* <link
-          rel="icon"
-          href="https://example.com/path/to/placeholder-icon.png"
-        /> */}
-        {/*
-          Ideal image resolution for OG image: 1200 x 630 pixels.
-          Ideal icon resolution for favicon: 32 x 32 pixels.
-        */}
       </Helmet>
 
       <div className="p-4 max-w-4xl mx-auto bg-white rounded-lg shadow-md">
