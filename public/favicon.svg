@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <defs>
+    <linearGradient id="glowGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff3300"/>
+      <stop offset="100%" style="stop-color:#ff6600"/>
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="32" height="32" fill="#001220"/>
+  
+  <!-- Core shape -->
+  <path d="M6,6 L26,6 L26,26 L6,26 Z" 
+        fill="url(#glowGradient)" 
+        stroke="#ff8800" 
+        stroke-width="2"/>
+  
+  <!-- Center lines -->
+  <path d="M16,10 L16,22 M10,16 L22,16" 
+        stroke="#001220" 
+        stroke-width="4" 
+        stroke-linecap="round"/>
+</svg>
