@@ -41,6 +41,7 @@ const HouseHeatingSimulation = () => {
   const [diurnalVariation, setDiurnalVariation] = useState(15); // Diurnal variation slider (0-30°F)
   const [simulationData, setSimulationData] = useState<SimulationData[]>([]);
   const [summary, setSummary] = useState<Summary>({ mode1Energy: '0', mode2Energy: '0', savings: '0' });
+  const [showAdvanced, setShowAdvanced] = useState(false); // State for advanced section toggle
 
   // Constants
   const SECONDS_PER_STEP = 10; // 10 seconds per simulation step
@@ -195,6 +196,11 @@ const HouseHeatingSimulation = () => {
     return simulationData.filter((_, index) => index % sampleInterval === 0);
   };
 
+  // Toggle advanced settings visibility
+  const toggleAdvanced = () => {
+    setShowAdvanced(!showAdvanced);
+  };
+
   return (
     <>
       {/* React Helmet for injecting OG/social sharing metadata */}
@@ -227,71 +233,6 @@ const HouseHeatingSimulation = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Daily Temp Variation (°F): {diurnalVariation}°F
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="30"
-                value={diurnalVariation}
-                onChange={(e) => setDiurnalVariation(parseInt(e.target.value))}
-                className="w-full"
-              />
-              <span className="text-xs text-gray-500">
-                (Daily temperature swing amplitude)
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Heater output (BTU/hr): {heaterOutput}
-              </label>
-              <input
-                type="range"
-                min="20000"
-                max="150000"
-                value={heaterOutput}
-                onChange={(e) => setHeaterOutput(parseInt(e.target.value))}
-                className="w-full"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                House Heat Capacity (BTU/°F): {houseHeatCapacity}
-              </label>
-              <input
-                type="range"
-                min="2000"
-                max="20000"
-                value={houseHeatCapacity}
-                onChange={(e) => setHouseHeatCapacity(parseInt(e.target.value))}
-                className="w-full"
-              />
-              <span className="text-xs text-gray-500">
-                (Higher values ~= bigger house)
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Insulation Efficiency (1-10): {insulation}
-              </label>
-              <input
-                type="range"
-                min="1"
-                max="10"
-                value={insulation}
-                onChange={(e) => setInsulation(parseInt(e.target.value))}
-                className="w-full"
-              />
-              <span className="text-xs text-gray-500">
-                (Higher values = better insulation)
-              </span>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Desired Inside Temp (°F): {desiredTemp}°F
               </label>
               <input
@@ -303,6 +244,86 @@ const HouseHeatingSimulation = () => {
                 className="w-full"
               />
             </div>
+
+            {/* Advanced Toggle Button */}
+            <div className="pt-2">
+              <button
+                onClick={toggleAdvanced}
+                className="text-blue-600 hover:text-blue-800 text-sm flex items-center"
+              >
+                <span>{showAdvanced ? '▼' : '►'} Advanced Settings</span>
+              </button>
+            </div>
+
+            {/* Advanced Settings Section */}
+            {showAdvanced && (
+              <div className="pt-2 pl-2 border-l-2 border-blue-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Insulation Efficiency (1-10): {insulation}
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={insulation}
+                    onChange={(e) => setInsulation(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <span className="text-xs text-gray-500">
+                    (Higher values = better insulation)
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Heater output (BTU/hr): {heaterOutput}
+                  </label>
+                  <input
+                    type="range"
+                    min="20000"
+                    max="150000"
+                    value={heaterOutput}
+                    onChange={(e) => setHeaterOutput(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="mt-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    House Heat Capacity (BTU/°F): {houseHeatCapacity}
+                  </label>
+                  <input
+                    type="range"
+                    min="2000"
+                    max="20000"
+                    value={houseHeatCapacity}
+                    onChange={(e) => setHouseHeatCapacity(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <span className="text-xs text-gray-500">
+                    (Higher values ~= bigger house)
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Daily Temp Variation (°F): {diurnalVariation}°F
+                  </label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="30"
+                    value={diurnalVariation}
+                    onChange={(e) => setDiurnalVariation(parseInt(e.target.value))}
+                    className="w-full"
+                  />
+                  <span className="text-xs text-gray-500">
+                    (Daily temperature swing amplitude)
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right column: Mode selection and button */}
