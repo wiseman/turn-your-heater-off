@@ -211,9 +211,9 @@ const HouseHeatingSimulation = () => {
       <div className="p-4 max-w-4xl mx-auto bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold mb-3">House Heating Simulation</h1>
 
-        {/* <Link to="/about" className="text-blue-600 hover:underline">
+        <Link to="/about" className="text-blue-600 hover:underline">
           Learn more about this simulation.
-        </Link> */}
+        </Link>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Left column: Inputs */}
           <div className="space-y-2">
