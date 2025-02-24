@@ -53,8 +53,6 @@ const About = () => {
           <h2 className="text-2xl font-semibold mb-4">Numerical Integration Method</h2>
           <p className="mb-3">
             The simulation employs a 4th-order Runge-Kutta (RK4) numerical integration method to solve the ODE. 
-            This provides significantly higher accuracy than simpler methods such as Euler integration, particularly
-            important for capturing thermal behavior during rapid temperature changes.
           </p>
           {/* <p className="mb-3">The RK4 implementation calculates temperature changes as follows:</p>
           <div className="bg-gray-100 p-4 rounded-md mb-4 font-mono overflow-x-auto">
