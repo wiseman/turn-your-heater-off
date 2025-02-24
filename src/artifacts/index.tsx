@@ -50,6 +50,7 @@ const HouseHeatingSimulation = () => {
     mode2DutyCycle: '0',
   });
   const [showAdvanced, setShowAdvanced] = useState(false); // State for advanced section toggle
+  const [useCelsius, setUseCelsius] = useState(false); // Temperature unit toggle
 
   // Constants
   const SECONDS_PER_STEP = 10; // 10 seconds per simulation step
@@ -57,6 +58,27 @@ const HouseHeatingSimulation = () => {
   const HOURS_SIMULATED = 24;
   const TOTAL_STEPS = HOURS_SIMULATED * STEPS_PER_HOUR;
   const THERMOSTAT_HYSTERESIS = 1; // °F (±0.5°F around setpoint)
+
+  // Temperature conversion functions
+  const fahrenheitToCelsius = (fahrenheit: number): number => {
+    return (fahrenheit - 32) * 5 / 9;
+  };
+
+  // Format temperature for display based on selected unit
+  const formatTemp = (tempF: number): string => {
+    if (useCelsius) {
+      return `${fahrenheitToCelsius(tempF).toFixed(1)}°C`;
+    }
+    return `${tempF}°F`;
+  };
+
+  // Get temperature value for display (numeric only)
+  const displayTemp = (tempF: number): number => {
+    if (useCelsius) {
+      return parseFloat(fahrenheitToCelsius(tempF).toFixed(1));
+    }
+    return tempF;
+  };
 
   const runSimulation = () => {
     // Initialize simulation for the selected mode
@@ -213,6 +235,18 @@ const HouseHeatingSimulation = () => {
   // Sample the simulation data for charting (e.g., every 30 minutes)
   const getChartData = () => {
     const sampleInterval = Math.floor(simulationData.length / (24 * 2)); // approx. every 30 minutes
+    
+    // If using Celsius, convert the temperature values for the chart
+    if (useCelsius) {
+      return simulationData
+        .filter((_, index) => index % sampleInterval === 0)
+        .map(dataPoint => ({
+          ...dataPoint,
+          temperature: displayTemp(dataPoint.temperature),
+          outsideTemp: displayTemp(dataPoint.outsideTemp)
+        }));
+    }
+    
     return simulationData.filter((_, index) => index % sampleInterval === 0);
   };
 
@@ -220,6 +254,17 @@ const HouseHeatingSimulation = () => {
   const toggleAdvanced = () => {
     setShowAdvanced(!showAdvanced);
   };
+
+  // Toggle temperature unit
+  const toggleTemperatureUnit = () => {
+    setUseCelsius(!useCelsius);
+  };
+
+  // Temperature range limits in F
+  const outsideTempMin = -20;
+  const outsideTempMax = 60;
+  const desiredTempMin = 50;
+  const desiredTempMax = 80;
 
   return (
     <>
@@ -231,38 +276,64 @@ const HouseHeatingSimulation = () => {
       <div className="p-4 max-w-4xl mx-auto bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold mb-3">House Heating Simulation</h1>
 
-        <Link to="/about" className="text-blue-600 hover:underline">
-          Learn more about this simulation.
-        </Link>
+        <div className="flex justify-between items-center mb-4">
+          <Link to="/about" className="text-blue-600 hover:underline">
+            Learn more about this simulation.
+          </Link>
+          
+          {/* Temperature unit toggle */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">°F</span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                className="sr-only peer" 
+                checked={useCelsius}
+                onChange={toggleTemperatureUnit}
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+            </label>
+            <span className="text-sm font-medium">°C</span>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           {/* Left column: Inputs */}
           <div className="space-y-2">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Outside Temp: {outsideTemp}°F
+                Outside Temp: {formatTemp(outsideTemp)}
               </label>
               <input
                 type="range"
-                min="-20"
-                max="60"
+                min={outsideTempMin}
+                max={outsideTempMax}
                 value={outsideTemp}
                 onChange={(e) => setOutsideTemp(parseInt(e.target.value))}
                 className="w-full"
               />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>{formatTemp(outsideTempMin)}</span>
+                <span>{formatTemp(outsideTempMax)}</span>
+              </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Desired Inside Temp (°F): {desiredTemp}°F
+                Desired Inside Temp: {formatTemp(desiredTemp)}
               </label>
               <input
                 type="range"
-                min="50"
-                max="80"
+                min={desiredTempMin}
+                max={desiredTempMax}
                 value={desiredTemp}
                 onChange={(e) => setDesiredTemp(parseInt(e.target.value))}
                 className="w-full"
               />
+              <div className="flex justify-between text-xs text-gray-500">
+                <span>{formatTemp(desiredTempMin)}</span>
+                <span>{formatTemp(desiredTempMax)}</span>
+              </div>
             </div>
 
             {/* Advanced Toggle Button */}
@@ -330,7 +401,7 @@ const HouseHeatingSimulation = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Daily Temp Variation (°F): {diurnalVariation}°F
+                    Daily Temp Variation: {formatTemp(diurnalVariation)}
                   </label>
                   <input
                     type="range"
@@ -432,7 +503,7 @@ const HouseHeatingSimulation = () => {
         {simulationData.length > 0 && (
           <div className="mt-4">
             <h2 className="text-xl font-semibold mb-3">
-              Temperature Over 24 Hours (°F)
+              Temperature Over 24 Hours {useCelsius ? '(°C)' : '(°F)'}
             </h2>
             <div className="h-60">
               <ResponsiveContainer width="100%" height="100%">
@@ -457,9 +528,9 @@ const HouseHeatingSimulation = () => {
                   <Tooltip
                     formatter={(value, name) => {
                       if (name === 'temperature')
-                        return [`${value}°F`, 'Inside Temp'];
+                        return [`${value}${useCelsius ? '°C' : '°F'}`, 'Inside Temp'];
                       if (name === 'outsideTemp')
-                        return [`${value}°F`, 'Outside Temp'];
+                        return [`${value}${useCelsius ? '°C' : '°F'}`, 'Outside Temp'];
                       if (name === 'heaterOn')
                         return [value ? 'On' : 'Off', 'Heater'];
                       return [value, name];
