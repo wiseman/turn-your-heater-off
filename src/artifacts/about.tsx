@@ -94,7 +94,7 @@ const About = () => {
             <li>Controller type: Bang-bang (on/off) with hysteresis</li>
             <li>Thermostat hysteresis: ±0.5°F around setpoint</li>
             <li>Mode 1: Constant temperature maintenance (24 hours)</li>
-            <li>Mode 2: Night setback (heating disabled 10PM-8AM, setback to 55°F)</li>
+            <li>Mode 2: Night setback: heating disabled 10PM-8AM</li>
           </ul>
         </section>
 
