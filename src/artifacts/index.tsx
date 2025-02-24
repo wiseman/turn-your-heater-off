@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
 import {
@@ -39,9 +39,12 @@ const HouseHeatingSimulation = () => {
   const [insulation, setInsulation] = useState(5); // Insulation efficiency (1-10)
   const [houseHeatCapacity, setHouseHeatCapacity] = useState(4000); // House heat capacity (BTU/°F)
   const [heaterOutput, setHeaterOutput] = useState(60000); // Heater output (BTU/hr)
-  const [mode, setMode] = useState(1); // 1 = 24hr heating, 2 = night setback
   const [diurnalVariation, setDiurnalVariation] = useState(15); // Diurnal variation slider (0-30°F)
-  const [simulationData, setSimulationData] = useState<SimulationData[]>([]);
+  const [thermostatHysteresis, setThermostatHysteresis] = useState(2); // Thermostat hysteresis (°F)
+  const [simulationData, setSimulationData] = useState<{mode1: SimulationData[], mode2: SimulationData[]}>({
+    mode1: [],
+    mode2: []
+  });
   const [summary, setSummary] = useState<Summary>({
     mode1Energy: '0',
     mode2Energy: '0',
@@ -57,7 +60,6 @@ const HouseHeatingSimulation = () => {
   const STEPS_PER_HOUR = 3600 / SECONDS_PER_STEP; // steps per hour
   const HOURS_SIMULATED = 24;
   const TOTAL_STEPS = HOURS_SIMULATED * STEPS_PER_HOUR;
-  const THERMOSTAT_HYSTERESIS = 1; // °F (±0.5°F around setpoint)
 
   // Temperature conversion functions
   const fahrenheitToCelsius = (fahrenheit: number): number => {
@@ -81,15 +83,24 @@ const HouseHeatingSimulation = () => {
   };
 
   const runSimulation = () => {
-    // Initialize simulation for the selected mode
-    let currentTemp = desiredTemp;
-    let heaterOn = false;
-    let totalEnergyUsed = 0;
-    let heaterOnCount = 0; // Count of steps with heater on
-    const data = [];
-
+    // Display loading state if needed in the future
+    
     // Determine heat loss coefficient (BTU/hr per °F difference)
     const heatLossCoefficient = 1000 / insulation;
+    
+    // Run simulation for Mode 1 (24-hour heating)
+    let mode1Temp = desiredTemp;
+    let mode1HeaterOn = false;
+    let mode1EnergyUsed = 0;
+    let mode1HeaterOnCount = 0;
+    const mode1Data: SimulationData[] = [];
+    
+    // Run simulation for Mode 2 (Night setback)
+    let mode2Temp = desiredTemp;
+    let mode2HeaterOn = false;
+    let mode2EnergyUsed = 0;
+    let mode2HeaterOnCount = 0;
+    const mode2Data: SimulationData[] = [];
 
     for (let step = 0; step < TOTAL_STEPS; step++) {
       // Time in hours (with fractional part)
@@ -105,149 +116,171 @@ const HouseHeatingSimulation = () => {
       const effectiveOutsideTemp =
         outsideTemp + (diurnalVariation / 2) * Math.sin((2 * Math.PI * (timeInHours - 9)) / 24);
 
-      // Determine target temperature based on heating mode
-      let targetTemp = desiredTemp;
-      let heatingDisabled = false;
-      if (mode === 2) {
-        // For mode 2, disable heating between 10PM and 8AM and use a setback temperature.
-        if (hour >= 22 || hour < 8) {
-          heatingDisabled = true;
-          targetTemp = 55;
-        }
+      // Mode 1: 24-hour heating (always on)
+      // No setback, always use desired temperature
+      const mode1TargetTemp = desiredTemp;
+      
+      // Bang-bang controller with hysteresis for Mode 1
+      if (mode1Temp < mode1TargetTemp - thermostatHysteresis / 2) {
+        mode1HeaterOn = true;
+      } else if (mode1Temp > mode1TargetTemp + thermostatHysteresis / 2) {
+        mode1HeaterOn = false;
       }
 
-      // Bang–bang controller with hysteresis to decide heater status.
-      if (!heatingDisabled) {
-        if (currentTemp < targetTemp - THERMOSTAT_HYSTERESIS / 2) {
-          heaterOn = true;
-        } else if (currentTemp > targetTemp + THERMOSTAT_HYSTERESIS / 2) {
-          heaterOn = false;
+      // Mode 2: Night setback
+      // Set back temperature between 10PM and 8AM
+      let mode2TargetTemp = desiredTemp;
+      let mode2HeatingDisabled = false;
+      if (hour >= 22 || hour < 8) {
+        mode2HeatingDisabled = true;
+        mode2TargetTemp = 55; // Setback temperature
+      }
+      
+      // Bang-bang controller with hysteresis for Mode 2
+      if (!mode2HeatingDisabled) {
+        if (mode2Temp < mode2TargetTemp - thermostatHysteresis / 2) {
+          mode2HeaterOn = true;
+        } else if (mode2Temp > mode2TargetTemp + thermostatHysteresis / 2) {
+          mode2HeaterOn = false;
         }
       } else {
-        heaterOn = false;
+        mode2HeaterOn = false;
       }
 
-      // RK4 integration step
+      // RK4 integration for Mode 1
       const dt = SECONDS_PER_STEP / 3600; // time step in hours
-      const heaterOutputValue = heaterOn ? heaterOutput : 0;
-      // Differential equation: dT/dt = (heaterOutputValue - (T - effectiveOutsideTemp)*heatLossCoefficient) / HOUSE_HEAT_CAPACITY
-      const f = (T: number) =>
-        (heaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / houseHeatCapacity;
+      const mode1HeaterOutputValue = mode1HeaterOn ? heaterOutput : 0;
+      
+      const f1 = (T: number) =>
+        (mode1HeaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / houseHeatCapacity;
 
-      const k1 = f(currentTemp);
-      const k2 = f(currentTemp + (k1 * dt) / 2);
-      const k3 = f(currentTemp + (k2 * dt) / 2);
-      const k4 = f(currentTemp + k3 * dt);
+      const k1_1 = f1(mode1Temp);
+      const k2_1 = f1(mode1Temp + (k1_1 * dt) / 2);
+      const k3_1 = f1(mode1Temp + (k2_1 * dt) / 2);
+      const k4_1 = f1(mode1Temp + k3_1 * dt);
 
-      const deltaT = (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
-      currentTemp += deltaT;
+      const deltaT1 = (dt / 6) * (k1_1 + 2 * k2_1 + 2 * k3_1 + k4_1);
+      mode1Temp += deltaT1;
+
+      // RK4 integration for Mode 2
+      const mode2HeaterOutputValue = mode2HeaterOn ? heaterOutput : 0;
+      
+      const f2 = (T: number) =>
+        (mode2HeaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / houseHeatCapacity;
+
+      const k1_2 = f2(mode2Temp);
+      const k2_2 = f2(mode2Temp + (k1_2 * dt) / 2);
+      const k3_2 = f2(mode2Temp + (k2_2 * dt) / 2);
+      const k4_2 = f2(mode2Temp + k3_2 * dt);
+
+      const deltaT2 = (dt / 6) * (k1_2 + 2 * k2_2 + 2 * k3_2 + k4_2);
+      mode2Temp += deltaT2;
 
       // Track energy usage and duty cycle (BTU used per step)
-      if (heaterOn) {
-        totalEnergyUsed += heaterOutput / STEPS_PER_HOUR;
-        heaterOnCount++;
+      if (mode1HeaterOn) {
+        mode1EnergyUsed += heaterOutput / STEPS_PER_HOUR;
+        mode1HeaterOnCount++;
+      }
+      
+      if (mode2HeaterOn) {
+        mode2EnergyUsed += heaterOutput / STEPS_PER_HOUR;
+        mode2HeaterOnCount++;
       }
 
-      data.push({
+      // Store Mode 1 data
+      mode1Data.push({
         time: timeString,
         hour,
-        temperature: parseFloat(currentTemp.toFixed(2)),
+        temperature: parseFloat(mode1Temp.toFixed(2)),
         outsideTemp: parseFloat(effectiveOutsideTemp.toFixed(2)),
-        heaterOn,
-        energyUsed: totalEnergyUsed,
+        heaterOn: mode1HeaterOn,
+        energyUsed: mode1EnergyUsed,
+      });
+      
+      // Store Mode 2 data
+      mode2Data.push({
+        time: timeString,
+        hour,
+        temperature: parseFloat(mode2Temp.toFixed(2)),
+        outsideTemp: parseFloat(effectiveOutsideTemp.toFixed(2)),
+        heaterOn: mode2HeaterOn,
+        energyUsed: mode2EnergyUsed,
       });
     }
 
-    setSimulationData(data);
+    // Set simulation data for both modes
+    setSimulationData({
+      mode1: mode1Data,
+      mode2: mode2Data
+    });
 
-    // Run a simulation for the opposite mode for comparison
-    const otherMode = mode === 1 ? 2 : 1;
-    let otherTemp = desiredTemp;
-    let otherHeaterOn = false;
-    let otherEnergyUsed = 0;
-    let otherHeaterOnCount = 0;
+    // Calculate energy savings between the two modes
+    const savings = ((mode1EnergyUsed - mode2EnergyUsed) / mode1EnergyUsed * 100).toFixed(2);
 
-    for (let step = 0; step < TOTAL_STEPS; step++) {
-      const timeInHours = step / STEPS_PER_HOUR;
-      const hour = Math.floor(timeInHours);
-
-      const effectiveOutsideTemp =
-        outsideTemp + (diurnalVariation / 2) * Math.sin((2 * Math.PI * (timeInHours - 9)) / 24);
-
-      let otherTargetTemp = desiredTemp;
-      let otherHeatingDisabled = false;
-      if (otherMode === 2) {
-        if (hour >= 22 || hour < 8) {
-          otherHeatingDisabled = true;
-          otherTargetTemp = 55;
-        }
-      }
-
-      if (!otherHeatingDisabled) {
-        if (otherTemp < otherTargetTemp - THERMOSTAT_HYSTERESIS / 2) {
-          otherHeaterOn = true;
-        } else if (otherTemp > otherTargetTemp + THERMOSTAT_HYSTERESIS / 2) {
-          otherHeaterOn = false;
-        }
-      } else {
-        otherHeaterOn = false;
-      }
-
-      const dt = SECONDS_PER_STEP / 3600;
-      const heaterOutputValue = otherHeaterOn ? heaterOutput : 0;
-      const fOther = (T: number) =>
-        (heaterOutputValue - (T - effectiveOutsideTemp) * heatLossCoefficient) / houseHeatCapacity;
-
-      const k1 = fOther(otherTemp);
-      const k2 = fOther(otherTemp + (k1 * dt) / 2);
-      const k3 = fOther(otherTemp + (k2 * dt) / 2);
-      const k4 = fOther(otherTemp + k3 * dt);
-
-      const deltaT = (dt / 6) * (k1 + 2 * k2 + 2 * k3 + k4);
-      otherTemp += deltaT;
-
-      if (otherHeaterOn) {
-        otherEnergyUsed += heaterOutput / STEPS_PER_HOUR;
-        otherHeaterOnCount++;
-      }
-    }
-
-    // Calculate energy savings between the two modes.
-    const mode1Energy = mode === 1 ? totalEnergyUsed : otherEnergyUsed;
-    const mode2Energy = mode === 2 ? totalEnergyUsed : otherEnergyUsed;
-    const savings = ((mode1Energy - mode2Energy) / mode1Energy * 100).toFixed(2);
-
-    // Compute the heater duty cycle (as a percentage of steps with the heater on)
-    const dutyCycleCurrent = (heaterOnCount / TOTAL_STEPS) * 100;
-    const dutyCycleOther = (otherHeaterOnCount / TOTAL_STEPS) * 100;
-    const mode1DutyCycle = mode === 1 ? dutyCycleCurrent : dutyCycleOther;
-    const mode2DutyCycle = mode === 2 ? dutyCycleCurrent : dutyCycleOther;
+    // Compute the heater duty cycle for each mode
+    const mode1DutyCycle = (mode1HeaterOnCount / TOTAL_STEPS) * 100;
+    const mode2DutyCycle = (mode2HeaterOnCount / TOTAL_STEPS) * 100;
 
     setSummary({
-      mode1Energy: mode1Energy.toFixed(0),
-      mode2Energy: mode2Energy.toFixed(0),
+      mode1Energy: mode1EnergyUsed.toFixed(0),
+      mode2Energy: mode2EnergyUsed.toFixed(0),
       savings,
       mode1DutyCycle: mode1DutyCycle.toFixed(2),
       mode2DutyCycle: mode2DutyCycle.toFixed(2),
     });
   };
 
-  // Sample the simulation data for charting (e.g., every 30 minutes)
-  const getChartData = () => {
-    const sampleInterval = Math.floor(simulationData.length / (24 * 2)); // approx. every 30 minutes
+  // Sample the simulation data for temperature charting
+  const getTemperatureChartData = () => {
+    if (simulationData.mode1.length === 0 || simulationData.mode2.length === 0) return [];
     
-    // If using Celsius, convert the temperature values for the chart
-    if (useCelsius) {
-      return simulationData
-        .filter((_, index) => index % sampleInterval === 0)
-        .map(dataPoint => ({
-          ...dataPoint,
-          temperature: displayTemp(dataPoint.temperature),
-          outsideTemp: displayTemp(dataPoint.outsideTemp)
-        }));
-    }
+    const sampleInterval = Math.floor(simulationData.mode1.length / (24 * 2)); // approx. every 30 minutes
     
-    return simulationData.filter((_, index) => index % sampleInterval === 0);
+    // Create combined dataset with both modes' temperatures and outside temperature
+    return simulationData.mode1
+      .filter((_, index) => index % sampleInterval === 0)
+      .map((dataPoint, i) => {
+        const mode2Point = simulationData.mode2[Math.min(i * sampleInterval, simulationData.mode2.length - 1)];
+        
+        if (useCelsius) {
+          return {
+            time: dataPoint.time,
+            hour: dataPoint.hour,
+            mode1Temp: displayTemp(dataPoint.temperature),
+            mode2Temp: displayTemp(mode2Point.temperature),
+            outsideTemp: displayTemp(dataPoint.outsideTemp),
+          };
+        }
+        
+        return {
+          time: dataPoint.time,
+          hour: dataPoint.hour,
+          mode1Temp: dataPoint.temperature,
+          mode2Temp: mode2Point.temperature,
+          outsideTemp: dataPoint.outsideTemp,
+        };
+      });
+  };
+  
+  // Sample the simulation data for energy usage charting
+  const getEnergyChartData = () => {
+    if (simulationData.mode1.length === 0 || simulationData.mode2.length === 0) return [];
+    
+    const sampleInterval = Math.floor(simulationData.mode1.length / (24 * 2)); // approx. every 30 minutes
+    
+    // Create combined dataset with both modes' energy usage
+    return simulationData.mode1
+      .filter((_, index) => index % sampleInterval === 0)
+      .map((dataPoint, i) => {
+        const mode2Point = simulationData.mode2[Math.min(i * sampleInterval, simulationData.mode2.length - 1)];
+        
+        return {
+          time: dataPoint.time,
+          hour: dataPoint.hour,
+          mode1Energy: dataPoint.energyUsed,
+          mode2Energy: mode2Point.energyUsed,
+        };
+      });
   };
 
   // Toggle advanced settings visibility
@@ -259,6 +292,11 @@ const HouseHeatingSimulation = () => {
   const toggleTemperatureUnit = () => {
     setUseCelsius(!useCelsius);
   };
+
+  // Run simulation whenever a parameter changes
+  useEffect(() => {
+    runSimulation();
+  }, [outsideTemp, desiredTemp, insulation, houseHeatCapacity, heaterOutput, diurnalVariation, thermostatHysteresis]);
 
   // Temperature range limits in F
   const outsideTempMin = -20;
@@ -415,67 +453,62 @@ const HouseHeatingSimulation = () => {
                     (Daily temperature swing amplitude)
                   </span>
                 </div>
+
+                <div className="mt-3">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Thermostat Hysteresis: {formatTemp(thermostatHysteresis)}
+                  </label>
+                  <input
+                    type="range"
+                    min="0.25"
+                    max="10"
+                    step="0.25"
+                    value={thermostatHysteresis}
+                    onChange={(e) => setThermostatHysteresis(parseFloat(e.target.value))}
+                    className="w-full"
+                  />
+                  <span className="text-xs text-gray-500">
+                    (Temperature band where heater stays in current state)
+                  </span>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Right column: Mode selection and button */}
+          {/* Right column: Mode descriptions and automatic update info */}
           <div className="space-y-2">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Heating Mode:
-              </label>
-              <div className="space-y-1">
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="mode1"
-                    name="mode"
-                    checked={mode === 1}
-                    onChange={() => setMode(1)}
-                    className="mr-2"
-                  />
-                  <label htmlFor="mode1" className="text-sm">
-                    Mode 1: 24-hour heating (constant)
-                  </label>
+              <div className="text-sm font-medium text-gray-700 mb-2">
+                Simulating both heating modes:
+              </div>
+              <div className="space-y-1 pl-2 border-l-2 border-blue-200">
+                <div className="text-sm mb-1">
+                  <span className="font-semibold text-indigo-600">Mode 1:</span> 24-hour heating at {formatTemp(desiredTemp)} (constant)
                 </div>
-                <div className="flex items-center">
-                  <input
-                    type="radio"
-                    id="mode2"
-                    name="mode"
-                    checked={mode === 2}
-                    onChange={() => setMode(2)}
-                    className="mr-2"
-                  />
-                  <label htmlFor="mode2" className="text-sm">
-                    Mode 2: Night setback (off 10PM–8AM)
-                  </label>
+                <div className="text-sm mb-1">
+                  <span className="font-semibold text-green-600">Mode 2:</span> Night setback (off 10PM–8AM, setback to {formatTemp(55)})
                 </div>
               </div>
             </div>
 
             <div className="pt-2">
-              <button
-                onClick={runSimulation}
-                className="w-full bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 text-sm"
-              >
-                Run Simulation
-              </button>
+              <div className="text-center text-sm text-gray-600 italic mb-2">
+                Simulation updates automatically as you change parameters
+              </div>
             </div>
 
-            {simulationData.length > 0 && (
+            {simulationData.mode1.length > 0 && (
               <div className="bg-gray-100 p-3 rounded mt-2 text-sm flex items-center">
                 <div className="flex-1">
                   <h3 className="font-medium mb-1">Simulation Results:</h3>
-                  <p>Mode 1 Energy: {summary.mode1Energy} BTU</p>
-                  <p>Mode 2 Energy: {summary.mode2Energy} BTU</p>
-                  <p>Mode 1 Heater Duty Cycle: {summary.mode1DutyCycle}%</p>
-                  <p>Mode 2 Heater Duty Cycle: {summary.mode2DutyCycle}%</p>
-                  <p className="font-bold">
+                  <p><span className="font-semibold text-indigo-600">Mode 1</span> Energy: {summary.mode1Energy} BTU</p>
+                  <p><span className="font-semibold text-green-600">Mode 2</span> Energy: {summary.mode2Energy} BTU</p>
+                  <p><span className="font-semibold text-indigo-600">Mode 1</span> Heater Duty Cycle: {summary.mode1DutyCycle}%</p>
+                  <p><span className="font-semibold text-green-600">Mode 2</span> Heater Duty Cycle: {summary.mode2DutyCycle}%</p>
+                  <p className="font-bold mt-2">
                     {parseFloat(summary.savings) > 0
-                      ? `Mode 2 saves ${summary.savings}%`
-                      : `Mode 1 is more efficient by ${Math.abs(parseFloat(summary.savings))}%`}
+                      ? `Night setback saves ${summary.savings}% energy`
+                      : `Constant heating is more efficient by ${Math.abs(parseFloat(summary.savings))}%`}
                   </p>
                 </div>
                 <div className="w-40 h-20">
@@ -500,14 +533,14 @@ const HouseHeatingSimulation = () => {
           </div>
         </div>
 
-        {simulationData.length > 0 && (
+        {simulationData.mode1.length > 0 && (
           <div className="mt-4">
             <h2 className="text-xl font-semibold mb-3">
               Temperature Over 24 Hours {useCelsius ? '(°C)' : '(°F)'}
             </h2>
             <div className="h-60">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={getChartData()}>
+                <LineChart data={getTemperatureChartData()}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="time"
@@ -527,12 +560,12 @@ const HouseHeatingSimulation = () => {
                   />
                   <Tooltip
                     formatter={(value, name) => {
-                      if (name === 'temperature')
-                        return [`${value}${useCelsius ? '°C' : '°F'}`, 'Inside Temp'];
+                      if (name === 'mode1Temp')
+                        return [`${value}${useCelsius ? '°C' : '°F'}`, 'Mode 1 Temp'];
+                      if (name === 'mode2Temp')
+                        return [`${value}${useCelsius ? '°C' : '°F'}`, 'Mode 2 Temp'];
                       if (name === 'outsideTemp')
                         return [`${value}${useCelsius ? '°C' : '°F'}`, 'Outside Temp'];
-                      if (name === 'heaterOn')
-                        return [value ? 'On' : 'Off', 'Heater'];
                       return [value, name];
                     }}
                     labelFormatter={(time) => `Time: ${time}`}
@@ -540,17 +573,26 @@ const HouseHeatingSimulation = () => {
                   <Legend verticalAlign="top" />
                   <Line
                     type="monotone"
-                    dataKey="temperature"
+                    dataKey="mode1Temp"
                     stroke="#8884d8"
                     strokeWidth={2}
                     dot={false}
-                    name="Inside Temp"
+                    name="Mode 1 (24hr)"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="mode2Temp"
+                    stroke="#82ca9d"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Mode 2 (Night Setback)"
                   />
                   <Line
                     type="monotone"
                     dataKey="outsideTemp"
-                    stroke="#82ca9d"
+                    stroke="#aaaaaa"
                     strokeWidth={2}
+                    strokeDasharray="5 5"
                     dot={false}
                     name="Outside Temp"
                   />
@@ -563,7 +605,7 @@ const HouseHeatingSimulation = () => {
             </h2>
             <div className="h-60">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={getChartData()}>
+                <LineChart data={getEnergyChartData()}>
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis
                     dataKey="time"
@@ -581,19 +623,31 @@ const HouseHeatingSimulation = () => {
                     }}
                   />
                   <Tooltip
-                    formatter={(value) => [
-                      `${parseInt(value.toString()).toLocaleString()} BTU`,
-                      'Energy Used',
-                    ]}
+                    formatter={(value, name) => {
+                      if (name === 'mode1Energy')
+                        return [`${parseInt(value.toString()).toLocaleString()} BTU`, 'Mode 1 Energy'];
+                      if (name === 'mode2Energy')
+                        return [`${parseInt(value.toString()).toLocaleString()} BTU`, 'Mode 2 Energy'];
+                      return [value, name];
+                    }}
                     labelFormatter={(time) => `Time: ${time}`}
+                  />
+                  <Legend verticalAlign="top" />
+                  <Line
+                    type="monotone"
+                    dataKey="mode1Energy"
+                    stroke="#8884d8"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Mode 1 (24hr)"
                   />
                   <Line
                     type="monotone"
-                    dataKey="energyUsed"
-                    stroke="#ff5500"
+                    dataKey="mode2Energy"
+                    stroke="#82ca9d"
                     strokeWidth={2}
                     dot={false}
-                    name="Energy Used"
+                    name="Mode 2 (Night Setback)"
                   />
                 </LineChart>
               </ResponsiveContainer>
