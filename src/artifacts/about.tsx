@@ -31,12 +31,12 @@ const About = () => {
           </div>
           <p className="mb-3">Where:</p>
           <ul className="list-disc pl-6 mb-4 space-y-2">
-            <li>dT/dt = Rate of change of indoor temperature (°F/hr)</li>
-            <li>Q<sub>heater</sub> = Heat input from heating system (BTU/hr)</li>
-            <li>T<sub>inside</sub> = Current indoor temperature (°F)</li>
-            <li>T<sub>outside</sub> = Outdoor temperature (°F)</li>
-            <li>k<sub>loss</sub> = Heat loss coefficient (BTU/hr·°F)</li>
-            <li>C<sub>house</sub> = Thermal mass/heat capacity of the house (BTU/°F)</li>
+            <li>dT/dt = Rate of change of indoor temperature (°F/hr or °C/hr)</li>
+            <li>Q<sub>heater</sub> = Heat input from heating system (BTU/hr or kW)</li>
+            <li>T<sub>inside</sub> = Current indoor temperature (°F or °C)</li>
+            <li>T<sub>outside</sub> = Outdoor temperature (°F or °C)</li>
+            <li>k<sub>loss</sub> = Heat loss coefficient (BTU/hr·°F or kW/°C)</li>
+            <li>C<sub>house</sub> = Thermal mass/heat capacity of the house (BTU/°F or kJ/°C)</li>
           </ul>
           <p className="mb-3">
             The heat loss coefficient (k<sub>loss</sub>) is calculated as a function of the insulation efficiency parameter:
@@ -79,12 +79,12 @@ const About = () => {
           
           <h3 className="text-xl font-medium mb-2">Thermal Parameters</h3>
           <ul className="list-disc pl-6 mb-4 space-y-1">
-            <li>House heat capacity: 2,000-20,000 BTU/°F (adjustable)</li>
-            <li>Heater output: 20,000-150,000 BTU/hr (adjustable)</li>
+            <li>House heat capacity: 2,000-20,000 BTU/°F or 1,000-10,000 kJ/°C (adjustable)</li>
+            <li>Heater output: 20,000-150,000 BTU/hr or 5.86-43.96 kW (adjustable)</li>
             <li>Insulation efficiency: 1-10 scale (translates to heat loss coefficients)</li>
-            <li>Outside base temperature: -20°F to 60°F (adjustable)</li>
-            <li>Desired indoor temperature: 50°F to 80°F (adjustable)</li>
-            <li>Diurnal temperature variation: 0-30°F amplitude (adjustable)</li>
+            <li>Outside base temperature: -20°F to 60°F or -29°C to 15.6°C (adjustable)</li>
+            <li>Desired indoor temperature: 50°F to 80°F or 10°C to 26.7°C (adjustable)</li>
+            <li>Diurnal temperature variation: 0-30°F or 0-16.7°C amplitude (adjustable)</li>
           </ul>
 
           <h3 className="text-xl font-medium mb-2">Control System</h3>
@@ -145,10 +145,16 @@ const About = () => {
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4">Energy Calculations</h2>
           <p className="mb-3">
-            Energy consumption is calculated by integrating the heater's BTU output over its operation time:
+            Energy consumption is calculated by integrating the heater's output over its operation time:
           </p>
           <div className="bg-gray-100 p-4 rounded-md mb-4 font-mono">
             E<sub>total</sub> = Σ (Q<sub>heater</sub> × Δt) for all time steps where heater is on
+          </div>
+          <p className="mb-3">
+            The simulation can display energy in either imperial units (BTU) or metric units (kWh), depending on the selected temperature unit. The conversion between BTU and kWh is:
+          </p>
+          <div className="bg-gray-100 p-4 rounded-md mb-4 font-mono">
+            1 BTU = 0.000293071 kWh
           </div>
           <p className="mb-3">
             Energy efficiency comparison is performed by running identical simulations with both heating modes and 

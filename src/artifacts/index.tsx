@@ -81,6 +81,24 @@ const HouseHeatingSimulation = () => {
     }
     return tempF;
   };
+  
+  // Convert BTU to kW
+  const btuToKw = (btu: number): number => {
+    return btu * 0.000293071; // 1 BTU/hr = 0.000293071 kW
+  };
+  
+  // Format energy based on selected temperature unit
+  const formatEnergy = (btu: number, isRate: boolean = false): string => {
+    if (useCelsius) {
+      const kw = btuToKw(btu);
+      if (isRate) {
+        return `${kw.toFixed(2)} kW`;
+      } else {
+        return `${kw.toFixed(2)} kWh`;
+      }
+    }
+    return `${btu.toLocaleString()} BTU`;
+  };
 
   const runSimulation = () => {
     // Display loading state if needed in the future
@@ -406,7 +424,7 @@ const HouseHeatingSimulation = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Heater output (BTU/hr): {heaterOutput}
+                    Heater output {useCelsius ? `(${btuToKw(heaterOutput).toFixed(2)} kW)` : `(${heaterOutput.toLocaleString()} BTU/hr)`}
                   </label>
                   <input
                     type="range"
@@ -421,7 +439,7 @@ const HouseHeatingSimulation = () => {
 
                 <div className="mt-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    House Heat Capacity (BTU/°F): {houseHeatCapacity}
+                    House Heat Capacity {useCelsius ? `(${(houseHeatCapacity * 0.5).toFixed(0)} kJ/°C)` : `(${houseHeatCapacity.toLocaleString()} BTU/°F)`}
                   </label>
                   <input
                     type="range"
@@ -501,8 +519,8 @@ const HouseHeatingSimulation = () => {
               <div className="bg-gray-100 p-3 rounded mt-2 text-sm flex items-center">
                 <div className="flex-1">
                   <h3 className="font-medium mb-1">Simulation Results:</h3>
-                  <p><span className="font-semibold text-indigo-600">Mode 1</span> Energy: {summary.mode1Energy} BTU</p>
-                  <p><span className="font-semibold text-green-600">Mode 2</span> Energy: {summary.mode2Energy} BTU</p>
+                  <p><span className="font-semibold text-indigo-600">Mode 1</span> Energy: {formatEnergy(parseInt(summary.mode1Energy))}</p>
+                  <p><span className="font-semibold text-green-600">Mode 2</span> Energy: {formatEnergy(parseInt(summary.mode2Energy))}</p>
                   <p><span className="font-semibold text-indigo-600">Mode 1</span> Heater Duty Cycle: {summary.mode1DutyCycle}%</p>
                   <p><span className="font-semibold text-green-600">Mode 2</span> Heater Duty Cycle: {summary.mode2DutyCycle}%</p>
                   <p className="font-bold mt-2">
@@ -515,13 +533,13 @@ const HouseHeatingSimulation = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={[
-                        { name: 'Mode 1', BTU: parseInt(summary.mode1Energy) },
-                        { name: 'Mode 2', BTU: parseInt(summary.mode2Energy) },
+                        { name: 'Mode 1', Energy: parseInt(summary.mode1Energy) },
+                        { name: 'Mode 2', Energy: parseInt(summary.mode2Energy) },
                       ]}
                       margin={{ top: 5, right: 5, left: 5, bottom: 5 }}
                     >
                       <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                      <Bar dataKey="BTU">
+                      <Bar dataKey="Energy">
                         <Cell key="cell-0" fill="#8884d8" />
                         <Cell key="cell-1" fill="#82ca9d" />
                       </Bar>
@@ -601,7 +619,7 @@ const HouseHeatingSimulation = () => {
             </div>
 
             <h2 className="text-xl font-semibold mt-4 mb-3">
-              Cumulative Energy Usage (BTU)
+              Cumulative Energy Usage {useCelsius ? '(kWh)' : '(BTU)'}
             </h2>
             <div className="h-60">
               <ResponsiveContainer width="100%" height="100%">
@@ -621,13 +639,23 @@ const HouseHeatingSimulation = () => {
                       angle: -90,
                       position: 'insideLeft',
                     }}
+                    domain={useCelsius ? ['dataMin', 'dataMax'] : undefined}
+                    tickFormatter={(value) => useCelsius ? btuToKw(value).toFixed(1) : value.toLocaleString()}
                   />
                   <Tooltip
                     formatter={(value, name) => {
-                      if (name === 'mode1Energy')
+                      if (name === 'mode1Energy') {
+                        if (useCelsius) {
+                          return [`${btuToKw(parseInt(value.toString())).toFixed(2)} kWh`, 'Mode 1 Energy'];
+                        }
                         return [`${parseInt(value.toString()).toLocaleString()} BTU`, 'Mode 1 Energy'];
-                      if (name === 'mode2Energy')
+                      }
+                      if (name === 'mode2Energy') {
+                        if (useCelsius) {
+                          return [`${btuToKw(parseInt(value.toString())).toFixed(2)} kWh`, 'Mode 2 Energy'];
+                        }
                         return [`${parseInt(value.toString()).toLocaleString()} BTU`, 'Mode 2 Energy'];
+                      }
                       return [value, name];
                     }}
                     labelFormatter={(time) => `Time: ${time}`}
