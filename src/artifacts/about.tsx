@@ -89,10 +89,10 @@ const About = () => {
 
           <h3 className="text-xl font-medium mb-2">Control System</h3>
           <ul className="list-disc pl-6 mb-4 space-y-1">
-            <li>Controller type: Bang-bang (on/off) with hysteresis</li>
-            <li>Thermostat hysteresis: ±0.5°F around setpoint</li>
+            <li>Controller type: Bang-bang (on/off) with adjustable hysteresis</li>
+            <li>Thermostat hysteresis: Adjustable from ±0.125°F to ±5°F around setpoint</li>
             <li>Mode 1: Constant temperature maintenance (24 hours)</li>
-            <li>Mode 2: Night setback: heating disabled 10PM-8AM</li>
+            <li>Mode 2: Night setback: heating completely disabled between 10PM-8AM</li>
           </ul>
         </section>
 

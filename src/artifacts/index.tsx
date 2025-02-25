@@ -128,12 +128,12 @@ const HouseHeatingSimulation = () => {
       }
 
       // Mode 2: Night setback
-      // Set back temperature between 10PM and 8AM
+      // Disable heating between 10PM and 8AM
       let mode2TargetTemp = desiredTemp;
       let mode2HeatingDisabled = false;
       if (hour >= 22 || hour < 8) {
         mode2HeatingDisabled = true;
-        mode2TargetTemp = 55; // Setback temperature
+        // No setback temperature needed since heating is completely disabled
       }
       
       // Bang-bang controller with hysteresis for Mode 2
@@ -486,7 +486,7 @@ const HouseHeatingSimulation = () => {
                   <span className="font-semibold text-indigo-600">Mode 1:</span> 24-hour heating at {formatTemp(desiredTemp)} (constant)
                 </div>
                 <div className="text-sm mb-1">
-                  <span className="font-semibold text-green-600">Mode 2:</span> Night setback (off 10PM–8AM, setback to {formatTemp(55)})
+                  <span className="font-semibold text-green-600">Mode 2:</span> Night setback (heating off 10PM–8AM)
                 </div>
               </div>
             </div>
