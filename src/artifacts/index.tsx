@@ -66,10 +66,21 @@ const HouseHeatingSimulation = () => {
     return (fahrenheit - 32) * 5 / 9;
   };
 
+  const relativeFahrenheitToCelsius = (fahrenheit: number): number => {
+    return fahrenheit * 5 / 9;
+  };
+
   // Format temperature for display based on selected unit
   const formatTemp = (tempF: number): string => {
     if (useCelsius) {
       return `${fahrenheitToCelsius(tempF).toFixed(1)}°C`;
+    }
+    return `${tempF}°F`;
+  };
+
+  const formatRelativeTemp = (tempF: number): string => {
+    if (useCelsius) {
+      return `${relativeFahrenheitToCelsius(tempF).toFixed(1)}°C`;
     }
     return `${tempF}°F`;
   };
@@ -474,7 +485,7 @@ const HouseHeatingSimulation = () => {
 
                 <div className="mt-3">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Thermostat Hysteresis: {formatTemp(thermostatHysteresis)}
+                    Thermostat Hysteresis: {formatRelativeTemp(thermostatHysteresis)}
                   </label>
                   <input
                     type="range"
