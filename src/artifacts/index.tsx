@@ -158,7 +158,7 @@ const HouseHeatingSimulation = () => {
 
       // Mode 2: Night setback
       // Disable heating between 10PM and 8AM
-      let mode2TargetTemp = desiredTemp;
+      const mode2TargetTemp = desiredTemp;
       let mode2HeatingDisabled = false;
       if (hour >= 22 || hour < 8) {
         mode2HeatingDisabled = true;
@@ -450,7 +450,7 @@ const HouseHeatingSimulation = () => {
 
                 <div className="mt-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    House Heat Capacity {useCelsius ? `(${(houseHeatCapacity * 0.5).toFixed(0)} kJ/°C)` : `(${houseHeatCapacity.toLocaleString()} BTU/°F)`}
+                    House Heat Capacity {useCelsius ? `(${(houseHeatCapacity * 1.899).toFixed(0)} kJ/°C)` : `(${houseHeatCapacity.toLocaleString()} BTU/°F)`}
                   </label>
                   <input
                     type="range"
